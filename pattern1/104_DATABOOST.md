@@ -2,12 +2,12 @@
 
 https://cloud.google.com/spanner/docs/databoost/databoost-overview
 
-DataBoostを利用すると1クエリのために専用のマシンリソースが作成され、処理される。
-Spanner Instanceには影響を与えずに負荷が高いクエリを実行できるので、バッチジョブの実行などに便利に使える。
-利用できるクエリは [Partition Query](https://cloud.google.com/spanner/docs/reads?hl=en#read_data_in_parallel) である必要がる。
-Partition Queryで実行可能なクエリは大雑把に言うと各Splitで完結できるクエリ。
+When using DataBoost, dedicated machine resources are created and processed for one query.
+You can execute high-load queries without affecting the Spanner Instance, so it can be used conveniently for batch job execution.
+The available query must be [Partition Query](https://cloud.google.com/spanner/docs/reads?hl=en#read_data_in_parallel).
+Roughly speaking, queries that can be executed with Partition Query are queries that can be completed in each Split.
 
-今回は簡単にDataBoostを使うためにBigQueryからDataBoostを利用して [Federated Query](https://cloud.google.com/bigquery/docs/cloud-spanner-federated-queries) を実行する。
+This time, to easily use DataBoost, we will use DataBoost from BigQuery to execute [Federated Query](https://cloud.google.com/bigquery/docs/cloud-spanner-federated-queries).
 
 ```
 properties1=$(echo '{"database":"projects/'$CLOUDSDK_CORE_PROJECT'/instances/'$CLOUDSDK_SPANNER_INSTANCE'/databases/'$DB1'", "useParallelism":true, "useDataBoost": true}')
@@ -18,12 +18,12 @@ bq mk --project_id $CLOUDSDK_CORE_PROJECT --connection --connection_type='CLOUD_
 
 # JOIN
 
-DataBoostでSpannerに対して実行するQueryはPartitionQueryとして実行される。
-そのため、実行できるQueryに制限が存在する。
-pattern1の場合、UsersとOrdersはインターリーブされてないので、JOINしようとすると別のPartitionにRowが跨ってしまうため、実行できない
+Queries executed against Spanner with DataBoost are executed as PartitionQuery.
+Therefore, there are restrictions on the queries that can be executed.
+In the case of pattern 1, Users and Orders are not interleaved, so if you try to JOIN, the Row will span another Partition, so it cannot be executed.
 
 ```
-# このクエリは実行できない
+# This query cannot be executed
 bq query --use_legacy_sql=false << EOS
 SELECT * FROM EXTERNAL_QUERY(
   '$CLOUDSDK_CORE_PROJECT.us-central1.$connection_name1',
@@ -31,7 +31,7 @@ SELECT * FROM EXTERNAL_QUERY(
 EOS
 ```
 
-以下のようなエラーメッセージが返ってくる
+An error message like the following is returned
 
 ```
 Error while reading data, error message: Error accessing Cloud Spanner.
